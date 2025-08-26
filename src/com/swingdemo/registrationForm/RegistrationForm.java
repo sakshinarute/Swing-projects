@@ -101,7 +101,7 @@ public class RegistrationForm {
         bottomPanel.add(tableScroll, BorderLayout.CENTER);
 
 
-        // ===== Event Handling =====
+        // ===== Event Handling ====
         submitBtn.addActionListener(e -> {
             String name = nameField.getText().trim();
             String gender = male.isSelected() ? "Male" : female.isSelected() ? "Female" : "";

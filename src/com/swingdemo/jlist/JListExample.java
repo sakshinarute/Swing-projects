@@ -28,6 +28,8 @@ public class JListExample {
 
        
         JButton showButton = new JButton("Show Selected");
+        
+        //event handling
         showButton.addActionListener(e -> {
             List<String> selected = languageList.getSelectedValuesList();
             if (selected.isEmpty()) {

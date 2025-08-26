@@ -30,6 +30,7 @@ public class ThemeSelector {
 		JButton resetButton = new JButton("Reset");
 		mainPanel.add(resetButton);
 		
+		//event handling
 		themeComboBox.addActionListener(e -> {
 			String  selectedTheme = (String)themeComboBox.getSelectedItem();
 			switch(selectedTheme) {

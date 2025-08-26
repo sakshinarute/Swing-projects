@@ -43,7 +43,7 @@ public class JTreeExample {
        
         JLabel selectedLabel = new JLabel("Select a node");
 
-        
+        // event handling
         tree.addTreeSelectionListener(e -> {
             DefaultMutableTreeNode selectedNode =
                 (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();

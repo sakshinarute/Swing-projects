@@ -24,6 +24,7 @@ public class JTableExample {
         ListSelectionModel select= jt.getSelectionModel();  
         select.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);  
         
+        //event handling
         select.addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) return;
             int[] rows = jt.getSelectedRows();
