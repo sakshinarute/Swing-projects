@@ -85,18 +85,15 @@ public class AdminDashboard extends JFrame {
         JButton btnShowUsers = new JButton("Show Usernames", loadIcon("info.jpg", 24, 24));
         JButton btnDelete = new JButton("Delete Selected", loadIcon("delete.jpg", 24, 24));
         JButton btnRefresh = new JButton("Refresh", loadIcon("refresh.png", 24, 24));
-        JButton btnSave = new JButton("Save Changes", loadIcon("save.jpg", 24, 24));
         bottom.add(btnShowUsers);
         bottom.add(btnDelete);
         bottom.add(btnRefresh);
-        bottom.add(btnSave);
         getContentPane().add(bottom, BorderLayout.SOUTH);
 
         // ---------------- Button Actions ----------------
         btnShowUsers.addActionListener(a -> showUsernames());
         btnDelete.addActionListener(a -> deleteSelected());
         btnRefresh.addActionListener(a -> refreshTable());
-        btnSave.addActionListener(a -> saveChanges());
 
         refreshTable();
         setVisible(true);
@@ -155,21 +152,6 @@ public class AdminDashboard extends JFrame {
             refreshTable();
             showDialog("Deleted account for " + uname, "success.jpg", "Success");
         }
-    }
-
-    private void saveChanges() {
-        for (int i = 0; i < model.getRowCount(); i++) {
-            String username = (String) model.getValueAt(i, 0);
-            Account acc = accountService.findByUsername(username);
-            if (acc != null) {
-                acc.setOwnerName((String) model.getValueAt(i, 1));
-                acc.setGender((String) model.getValueAt(i, 2));
-                acc.setAccountType((String) model.getValueAt(i, 3));
-                acc.setBalance((Double) model.getValueAt(i, 4));
-                acc.setSmsAlerts((Boolean) model.getValueAt(i, 5));
-            }
-        }
-        showDialog("Changes saved successfully!", "success.jpg", "Success");
     }
 
     private void showUsernames() {

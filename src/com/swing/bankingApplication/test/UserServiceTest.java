@@ -1,10 +1,9 @@
 package com.swing.bankingApplication.test;
 
+import com.swing.bankingApplication.UserService;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import com.swing.bankingApplication.UserService;
 
 import java.util.List;
 
@@ -48,3 +47,4 @@ public class UserServiceTest {
         Assert.assertEquals(userService.getFullName("unknown"), "unknown");
     }
 }
+
