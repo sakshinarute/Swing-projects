@@ -4,77 +4,114 @@ import javax.swing.*;
 import java.awt.*;
 
 public class UserDashboard extends JFrame {
-    private AccountService accountService = new AccountService();
+    private final AccountService accountService = new AccountService();
 
     public UserDashboard() {
         setTitle("User Dashboard - " + Session.loggedInUser);
-        setSize(600, 300);
+        setSize(600, 380);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
 
-
-        // ---------------- Menu ----------------
-        JMenuBar mb = new JMenuBar();
-        JMenu file = new JMenu("File");
-        JMenuItem logout = new JMenuItem("Logout");
-        file.add(logout);
-        mb.add(file);
-        setJMenuBar(mb);
-
-        logout.addActionListener(a -> doLogout());
-
-        getContentPane().setLayout(new BorderLayout());
-
-        // ---------------- Top Panel ----------------
+        //(Welcome Message)
         JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        top.setOpaque(false);
         top.add(new JLabel("Welcome, " + Session.loggedInUser));
-        getContentPane().add(top, BorderLayout.NORTH);
+        add(top, BorderLayout.NORTH);
 
-        // ---------------- User Info ----------------
+        // Center: Account Details + Actions
         Account acc = accountService.findByUsername(Session.loggedInUser);
+        JPanel center = new JPanel(new GridLayout(6, 2, 8, 8));
+        center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
         if (acc != null) {
-            JTextArea area = new JTextArea();
-            area.setEditable(false);
-            StringBuilder sb = new StringBuilder();
-            sb.append("Owner Name: ").append(acc.getOwnerName()).append("\n");
-            sb.append("Gender: ").append(acc.getGender()).append("\n");
-            sb.append("Account Type: ").append(acc.getAccountType()).append("\n");
-            sb.append("Balance: ").append(acc.getBalance()).append("\n");
-            sb.append("SMS Alerts: ").append(acc.isSmsAlerts() ? "Yes" : "No").append("\n");
-            area.setText(sb.toString());
-            getContentPane().add(new JScrollPane(area), BorderLayout.CENTER);
+            center.add(new JLabel("Owner Name:")); center.add(new JLabel(acc.getOwnerName()));
+            center.add(new JLabel("Gender:")); center.add(new JLabel(acc.getGender()));
+            center.add(new JLabel("Account Type:")); center.add(new JLabel(acc.getAccountType()));
+            JLabel balLabel = new JLabel(String.valueOf(acc.getBalance()));
+            center.add(new JLabel("Balance:")); center.add(balLabel);
+            center.add(new JLabel("SMS Alerts:")); center.add(new JLabel(acc.isSmsAlerts() ? "Yes" : "No"));
+
+            //Deposit and Withdraw Buttons
+            JButton btnDeposit = new JButton("Request Deposit", loadIcon("add.png", 24, 24));
+            JButton btnWithdraw = new JButton("Request Withdraw", loadIcon("delete.jpg", 24, 24));
+            center.add(btnDeposit); center.add(btnWithdraw);
+
+            //Deposit Action
+            btnDeposit.addActionListener(a -> {
+                String s = JOptionPane.showInputDialog(this, "Enter amount to deposit:");
+                if (s == null) return;
+                try {
+                    double amt = Double.parseDouble(s);
+                    if (amt <= 0) {
+                        JOptionPane.showMessageDialog(this, "Amount must be > 0", "Error",
+                                JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                        return;
+                    }
+                    accountService.addRequest(new TransactionRequest(acc.getUsername(), "Deposit", amt));
+                    JOptionPane.showMessageDialog(this, "Deposit request submitted for admin approval",
+                            "Submitted", JOptionPane.INFORMATION_MESSAGE, loadIcon("info.jpg", 64, 64));
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid amount", "Error",
+                            JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                }
+            });
+
+            //Withdraw Action
+            btnWithdraw.addActionListener(a -> {
+                String s = JOptionPane.showInputDialog(this, "Enter amount to withdraw:");
+                if (s == null) return;
+                try {
+                    double amt = Double.parseDouble(s);
+                    if (amt <= 0) {
+                        JOptionPane.showMessageDialog(this, "Amount must be > 0", "Error",
+                                JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                        return;
+                    }
+                    accountService.addRequest(new TransactionRequest(acc.getUsername(), "Withdraw", amt));
+                    JOptionPane.showMessageDialog(this, "Withdraw request submitted for admin approval",
+                            "Submitted", JOptionPane.INFORMATION_MESSAGE, loadIcon("info.jpg", 64, 64));
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid amount", "Error",
+                            JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                }
+            });
         } else {
-            getContentPane().add(new JLabel("No account found for your username."), BorderLayout.CENTER);
+            center.add(new JLabel("No account found for your username."));
+            center.add(new JLabel());
         }
+
+        add(center, BorderLayout.CENTER);
+
+        //Bottom: Logout Button
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton logoutBtn = new JButton("Logout", loadIcon("logout.jpg", 24, 24));
+        bottom.add(logoutBtn);
+        add(bottom, BorderLayout.SOUTH);
+
+        // Logout Action
+        logoutBtn.addActionListener(a -> doLogout());
 
         setVisible(true);
     }
 
-
-    // ---------------- Icon Loader ----------------
-    private ImageIcon loadIcon(String fileName, int width, int height) {
-        java.net.URL url = getClass().getResource("icons/" + fileName);
-        if (url == null) return null;
-        ImageIcon icon = new ImageIcon(url);
-        Image img = icon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(img);
+    private ImageIcon loadIcon(String name, int w, int h) {
+        try {
+            java.net.URL url = getClass().getResource("/com/swing/bankingApplication/icons/" + name);
+            if (url == null) {
+                System.err.println("Icon not found: " + name);
+                return null;
+            }
+            ImageIcon ic = new ImageIcon(url);
+            Image img = ic.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    // ---------------- Dialog Helper ----------------
-    private int showConfirmDialog(String message, String iconFile, String title) {
-        ImageIcon icon = loadIcon(iconFile, 64, 64);
-        return JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, icon);
-    }
-
-    private void showDialog(String message, String iconFile, String title) {
-        ImageIcon icon = loadIcon(iconFile, 64, 64);
-        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE, icon);
-    }
-
-    // ---------------- Logout ----------------
     private void doLogout() {
-        int choice = showConfirmDialog("Logout now?", "warning.jpg", "Logout");
+        int choice = JOptionPane.showConfirmDialog(this, "Logout now?", "Logout",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, loadIcon("warning.jpg", 64, 64));
         if (choice == JOptionPane.YES_OPTION) {
             Session.loggedInUser = null;
             Session.isAdmin = false;

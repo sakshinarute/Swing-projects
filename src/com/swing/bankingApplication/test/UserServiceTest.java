@@ -2,37 +2,41 @@ package com.swing.bankingApplication.test;
 
 import com.swing.bankingApplication.UserService;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-
 import java.util.List;
 
 public class UserServiceTest {
 
     private UserService userService;
 
-    @BeforeMethod
+    @BeforeClass
     public void setup() {
         userService = new UserService();
     }
 
     @Test
-    public void testAuthenticate() {
+    public void testAuthenticateValid() {
         Assert.assertTrue(userService.authenticate("admin", "admin123"));
+    }
+
+    @Test
+    public void testAuthenticateInvalid() {
         Assert.assertFalse(userService.authenticate("admin", "wrongPass"));
     }
 
     @Test
-    public void testCreateUserAndExists() {
-        userService.createUser("newUser", "newPass", "New Name");
-        Assert.assertTrue(userService.usernameExists("newUser"));
+    public void testUsernameExists() {
+        Assert.assertTrue(userService.usernameExists("admin"));
+        Assert.assertFalse(userService.usernameExists("unknown"));
     }
 
     @Test
-    public void testResetPassword() {
-        userService.createUser("resetUser", "oldPass", "Reset Name");
-        userService.resetPassword("resetUser", "newPass");
-        Assert.assertTrue(userService.authenticate("resetUser", "newPass"));
+    public void testCreateUserAndResetPassword() {
+        userService.createUser("newUser", "pass123", "New User");
+        Assert.assertTrue(userService.usernameExists("newUser"));
+        userService.resetPassword("newUser", "newPass");
+        Assert.assertTrue(userService.authenticate("newUser", "newPass"));
     }
 
     @Test
@@ -47,4 +51,3 @@ public class UserServiceTest {
         Assert.assertEquals(userService.getFullName("unknown"), "unknown");
     }
 }
-

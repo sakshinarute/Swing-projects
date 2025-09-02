@@ -4,12 +4,13 @@ import javax.swing.*;
 import java.net.URL;
 
 public class IconUtil {
-    public static ImageIcon loadIcon(String name) {
-        URL url = IconUtil.class.getResource("/icons/" + name);
-        if (url == null) {
-            System.err.println("Icon not found: /icons/" + name);
+    public static ImageIcon loadIcon(String fileName) {
+        URL iconURL = IconUtil.class.getResource("/icons/" + fileName);
+        if (iconURL != null) {
+            return new ImageIcon(iconURL);
+        } else {
+            System.out.println("Icon not found: " + fileName);
             return null;
         }
-        return new ImageIcon(url);
     }
 }

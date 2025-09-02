@@ -4,23 +4,24 @@ import javax.swing.*;
 import java.awt.*;
 
 public class LoginFrame extends JFrame {
-    private JTextField txtUser;
-    private JPasswordField txtPass;
-    private JComboBox<String> roleCombo;
+    public JTextField txtUser;
+    public JPasswordField txtPass;
+    public JComboBox<String> roleCombo;
+    public JButton loginButton;
+    public JButton btnExit;
+
     private AccountService accountService = new AccountService();
 
     public LoginFrame() {
         setTitle("Banking App - Login");
-        setSize(420, 230);
+        setSize(480, 270);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(8,8));
 
-        // Center panel for username, password, role
-        JPanel center = new JPanel(new GridLayout(3, 2, 8, 8));
-        center.setOpaque(false); 
-        center.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // center form
+        JPanel center = new JPanel(new GridLayout(3,2,8,8));
+        center.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
         center.add(new JLabel("Username:"));
         txtUser = new JTextField();
         center.add(txtUser);
@@ -35,51 +36,42 @@ public class LoginFrame extends JFrame {
 
         add(center, BorderLayout.CENTER);
 
-        // South panel for buttons
+        // south buttons
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        south.setOpaque(false); // transparent to show background
-        JButton btnExit = new JButton("Exit", loadIcon("delete.jpg", 24, 24));
-        JButton btnLogin = new JButton("Login", loadIcon("login.png", 24, 24));
+        btnExit = new JButton("Exit", loadIcon("delete.jpg", 20, 20));
+        loginButton = new JButton("Login", loadIcon("login.png", 20, 20));
         south.add(btnExit);
-        south.add(btnLogin);
+        south.add(loginButton);
         add(south, BorderLayout.SOUTH);
 
-        // Action listeners
-        btnLogin.addActionListener(a -> doLogin());
+        // actions
+        loginButton.addActionListener(a -> doLogin());
         btnExit.addActionListener(a -> doExit());
 
         setVisible(true);
     }
 
-
-    // ---------------- Icon Loader ----------------
-    private ImageIcon loadIcon(String fileName, int width, int height) {
-        java.net.URL url = getClass().getResource("icons/" + fileName);
-        if (url == null) return null;
-        ImageIcon icon = new ImageIcon(url);
-        Image img = icon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(img);
+    // load icon from package path and resize
+    private ImageIcon loadIcon(String name, int w, int h) {
+        try {
+            java.net.URL url = getClass().getResource("/com/swing/bankingApplication/icons/" + name);
+            if (url == null) return null;
+            ImageIcon ic = new ImageIcon(url);
+            Image img = ic.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            return new ImageIcon(img);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
-    // ---------------- Dialog Helper ----------------
-    private void showDialog(String message, String iconFile, String title) {
-        ImageIcon icon = loadIcon(iconFile, 64, 64);
-        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE, icon);
-    }
-
-    private int showConfirmDialog(String message, String iconFile, String title) {
-        ImageIcon icon = loadIcon(iconFile, 64, 64);
-        return JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, icon);
-    }
-
-    // ---------------- Login Logic ----------------
     private void doLogin() {
         String u = txtUser.getText().trim();
         String p = new String(txtPass.getPassword()).trim();
         String role = (String) roleCombo.getSelectedItem();
 
         if (u.isEmpty() || p.isEmpty()) {
-            showDialog("Enter username and password", "warning.jpg", "Validation");
+            JOptionPane.showMessageDialog(this, "Enter username and password", "Validation",
+                    JOptionPane.INFORMATION_MESSAGE, loadIcon("warning.jpg", 64, 64));
             return;
         }
 
@@ -87,27 +79,33 @@ public class LoginFrame extends JFrame {
             if ("admin".equals(u) && "admin123".equals(p)) {
                 Session.loggedInUser = "admin";
                 Session.isAdmin = true;
+                JOptionPane.showMessageDialog(this, "Logged in as admin", "Success",
+                        JOptionPane.INFORMATION_MESSAGE, loadIcon("success.jpg", 64, 64));
                 dispose();
                 new AdminDashboard();
             } else {
-                showDialog("Invalid admin credentials", "error.jpg", "Error");
+                JOptionPane.showMessageDialog(this, "Invalid admin credentials", "Error",
+                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
             }
         } else {
             Account acc = accountService.findByUsername(u);
             if (acc != null && acc.getPassword().equals(p)) {
                 Session.loggedInUser = u;
                 Session.isAdmin = false;
+                JOptionPane.showMessageDialog(this, "Welcome " + acc.getOwnerName(), "Success",
+                        JOptionPane.INFORMATION_MESSAGE, loadIcon("success.jpg", 64, 64));
                 dispose();
                 new UserDashboard();
             } else {
-                showDialog("Invalid user credentials", "error.jpg", "Error");
+                JOptionPane.showMessageDialog(this, "Invalid user credentials", "Error",
+                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
             }
         }
     }
 
-    // ---------------- Exit Logic ----------------
     private void doExit() {
-        int choice = showConfirmDialog("Do you really want to exit?", "warning.jpg", "Exit");
+        int choice = JOptionPane.showConfirmDialog(this, "Do you really want to exit?", "Exit",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, loadIcon("warning.jpg", 64, 64));
         if (choice == JOptionPane.YES_OPTION) {
             System.exit(0);
         }

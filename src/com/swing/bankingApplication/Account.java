@@ -1,12 +1,15 @@
 package com.swing.bankingApplication;
 
+import java.io.Serializable;
 
-public class Account {
-    private String username;    
-    private String password;    
-    private String ownerName;   
-    private String gender;      
-    private String accountType; 
+public class Account implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private String username;
+    private String password;
+    private String ownerName;
+    private String gender;
+    private String accountType;
     private double balance;
     private boolean smsAlerts;
 
@@ -20,7 +23,6 @@ public class Account {
         this.smsAlerts = smsAlerts;
     }
 
-   
     public String getUsername() { return username; }
     public String getPassword() { return password; }
     public String getOwnerName() { return ownerName; }
@@ -35,6 +37,9 @@ public class Account {
     public void setAccountType(String accountType) { this.accountType = accountType; }
     public void setBalance(double balance) { this.balance = balance; }
     public void setSmsAlerts(boolean smsAlerts) { this.smsAlerts = smsAlerts; }
+
+    @Override
+    public String toString() {
+        return "Account{" + username + ", balance=" + balance + "}";
+    }
 }
-
-
