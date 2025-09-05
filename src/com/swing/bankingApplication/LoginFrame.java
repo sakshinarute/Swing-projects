@@ -7,21 +7,36 @@ public class LoginFrame extends JFrame {
     public JTextField txtUser;
     public JPasswordField txtPass;
     public JComboBox<String> roleCombo;
-    public JButton loginButton;
-    public JButton btnExit;
 
     private AccountService accountService = new AccountService();
 
     public LoginFrame() {
         setTitle("Banking App - Login");
-        setSize(480, 270);
+        setSize(480, 300);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout(8,8));
+        setUndecorated(false);
 
-        // center form
-        JPanel center = new JPanel(new GridLayout(3,2,8,8));
-        center.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
+        // Gradient panel with lighter colors
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                Color c1 = new Color(235, 255, 245); // very light mint
+                Color c2 = new Color(245, 240, 255); // very light lavender
+                GradientPaint gp = new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2);
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        mainPanel.setLayout(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        add(mainPanel);
+
+        // Center form
+        JPanel center = new JPanel(new GridLayout(3, 2, 8, 8));
+        center.setOpaque(false);
         center.add(new JLabel("Username:"));
         txtUser = new JTextField();
         center.add(txtUser);
@@ -34,24 +49,70 @@ public class LoginFrame extends JFrame {
         roleCombo = new JComboBox<>(new String[]{"Admin", "User"});
         center.add(roleCombo);
 
-        add(center, BorderLayout.CENTER);
+        mainPanel.add(center, BorderLayout.CENTER);
 
-        // south buttons
-        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnExit = new JButton("Exit", loadIcon("delete.jpg", 20, 20));
-        loginButton = new JButton("Login", loadIcon("login.png", 20, 20));
-        south.add(btnExit);
+        // South panel with icon buttons
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 0));
+        south.setOpaque(false);
+
+        JButton loginButton = createIconButton("login.png", 40, new Color(76, 175, 80), "Login");
+        JButton exitButton = createIconButton("error.jpg", 40, new Color(244, 67, 54), "Exit");
+
+        south.add(exitButton);
         south.add(loginButton);
-        add(south, BorderLayout.SOUTH);
+        mainPanel.add(south, BorderLayout.SOUTH);
 
-        // actions
+        // Actions
         loginButton.addActionListener(a -> doLogin());
-        btnExit.addActionListener(a -> doExit());
+        exitButton.addActionListener(a -> doExit());
 
         setVisible(true);
     }
 
-    // load icon from package path and resize
+    // Create icon-only button with hover effect
+    private JButton createIconButton(String iconName, int size, Color hoverColor, String tooltip) {
+        JButton button = new JButton(loadIcon(iconName, size, size));
+        button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2)); // default black border
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setToolTipText(tooltip);
+
+        // Hover effect: background + thicker border
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                button.setOpaque(true);
+                button.setBackground(hoverColor);
+                button.setBorder(BorderFactory.createLineBorder(hoverColor, 5)); // thicker colored border on hover
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                button.setOpaque(false);
+                button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2)); // revert to black border
+            }
+        });
+
+        // Rounded background
+        button.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+            @Override
+            public void paint(Graphics g, JComponent c) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (button.isOpaque()) {
+                    g2.setColor(button.getBackground());
+                    g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), 20, 20);
+                }
+                super.paint(g2, c);
+                g2.dispose();
+            }
+        });
+
+        return button;
+    }
+
+
     private ImageIcon loadIcon(String name, int w, int h) {
         try {
             java.net.URL url = getClass().getResource("/com/swing/bankingApplication/icons/" + name);
@@ -79,26 +140,22 @@ public class LoginFrame extends JFrame {
             if ("admin".equals(u) && "admin123".equals(p)) {
                 Session.loggedInUser = "admin";
                 Session.isAdmin = true;
-                JOptionPane.showMessageDialog(this, "Logged in as admin", "Success",
-                        JOptionPane.INFORMATION_MESSAGE, loadIcon("success.jpg", 64, 64));
                 dispose();
-                new AdminDashboard();
+                new AdminMenuPage();
             } else {
                 JOptionPane.showMessageDialog(this, "Invalid admin credentials", "Error",
-                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 42, 42));
             }
         } else {
             Account acc = accountService.findByUsername(u);
             if (acc != null && acc.getPassword().equals(p)) {
                 Session.loggedInUser = u;
                 Session.isAdmin = false;
-                JOptionPane.showMessageDialog(this, "Welcome " + acc.getOwnerName(), "Success",
-                        JOptionPane.INFORMATION_MESSAGE, loadIcon("success.jpg", 64, 64));
                 dispose();
                 new UserDashboard();
             } else {
                 JOptionPane.showMessageDialog(this, "Invalid user credentials", "Error",
-                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 64, 64));
+                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 42, 42));
             }
         }
     }

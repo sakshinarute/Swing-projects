@@ -1,16 +1,19 @@
 package com.swing.bankingApplication;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
 import java.awt.*;
 import java.util.List;
 
 public class AdminDashboard extends JFrame {
 
     private final AccountService accountService = new AccountService();
-    public JTable table;                   
-    public DefaultTableModel model;        
+    public JTable table;
+    public DefaultTableModel model;
     private JTree navTree;
 
     private JTable requestTable;
@@ -22,35 +25,62 @@ public class AdminDashboard extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // menu bar
+     // Plain main panel
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        setContentPane(mainPanel);
+
+
+        // Menu bar
         JMenuBar mb = new JMenuBar();
         JMenu file = new JMenu("File");
         JMenuItem logout = new JMenuItem("Logout");
+        logout.addActionListener(a -> doLogout());
         file.add(logout);
         mb.add(file);
         setJMenuBar(mb);
-        logout.addActionListener(a -> doLogout());
 
-        // toolbar top
+        // Top toolbar buttons
         JToolBar tb = new JToolBar();
         tb.setFloatable(false);
-        JButton btnAdd = new JButton("Add Account", loadIcon("add.png", 28, 28));
-        JButton btnDelete = new JButton("Delete Selected", loadIcon("delete.jpg", 28, 28));
-        JButton btnRefresh = new JButton("Refresh", loadIcon("refresh.png", 28, 28));
-        JButton btnSave = new JButton("Save Changes", loadIcon("save.jpg", 28, 28));
+        tb.setOpaque(false);
 
-        tb.add(btnAdd); tb.add(btnDelete); tb.add(btnRefresh); tb.add(btnSave);
-        getContentPane().add(tb, BorderLayout.NORTH);
+        JButton btnAdd = createToolbarButton("add.png", "Add Account", new Color(70, 130, 180), 40, 40);
+        btnAdd.addActionListener(a -> showAddDialog());
 
-        // nav tree left
+        JButton btnDelete = createToolbarButton("delete.jpg", "Delete Selected", new Color(244, 67, 54), 40, 40);
+        btnDelete.addActionListener(a -> deleteSelected());
+
+        JButton btnRefresh = createToolbarButton("refresh.png", "Refresh", new Color(255, 193, 7), 40, 40);
+        btnRefresh.addActionListener(a -> refreshTable());
+
+        JButton btnSave = createToolbarButton("save.jpg", "Save", new Color(60, 179, 113), 40, 40);
+        btnSave.addActionListener(a -> saveChanges());
+
+        tb.add(btnAdd); tb.add(Box.createHorizontalStrut(10));
+        tb.add(btnDelete); tb.add(Box.createHorizontalStrut(10));
+        tb.add(btnRefresh); tb.add(Box.createHorizontalStrut(10));
+        tb.add(btnSave);
+
+        mainPanel.add(tb, BorderLayout.NORTH);
+
+        // Navigation tree
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("Navigation");
         DefaultMutableTreeNode accNode = new DefaultMutableTreeNode("Accounts");
         root.add(accNode);
         accNode.add(new DefaultMutableTreeNode("Savings"));
         accNode.add(new DefaultMutableTreeNode("Current"));
-
         navTree = new JTree(root);
         navTree.setRootVisible(false);
+        navTree.setBorder(new EmptyBorder(5,5,5,5));
+        navTree.setBackground(Color.WHITE); // or whatever plain color you prefer
+        DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) navTree.getCellRenderer();
+        renderer.setBackgroundNonSelectionColor(Color.WHITE); // plain background
+        renderer.setBackgroundSelectionColor(new Color(173, 216, 230)); // light blue for selection
+        renderer.setTextNonSelectionColor(Color.BLACK);
+        renderer.setTextSelectionColor(Color.BLACK);
+
+
         navTree.addTreeSelectionListener(e -> {
             DefaultMutableTreeNode sel = (DefaultMutableTreeNode) navTree.getLastSelectedPathComponent();
             if (sel == null) return;
@@ -59,7 +89,7 @@ public class AdminDashboard extends JFrame {
             else refreshTable();
         });
 
-        // account table center top
+        // Tables
         String[] cols = {"Username", "Name", "Gender", "Type", "Balance", "SMS Alerts"};
         model = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int row, int col) { return col != 0; }
@@ -70,8 +100,8 @@ public class AdminDashboard extends JFrame {
             }
         };
         table = new JTable(model);
+        styleTable(table);
 
-        // request table center bottom
         String[] reqCols = {"Username", "Type", "Amount"};
         requestModel = new DefaultTableModel(reqCols, 0) {
             @Override public boolean isCellEditable(int row, int col) { return false; }
@@ -81,6 +111,7 @@ public class AdminDashboard extends JFrame {
             }
         };
         requestTable = new JTable(requestModel);
+        styleTable(requestTable);
 
         JScrollPane acctScroll = new JScrollPane(table);
         JScrollPane reqScroll = new JScrollPane(requestTable);
@@ -88,36 +119,74 @@ public class AdminDashboard extends JFrame {
         vert.setDividerLocation(360);
         JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(navTree), vert);
         split.setDividerLocation(220);
-        getContentPane().add(split, BorderLayout.CENTER);
+        mainPanel.add(split, BorderLayout.CENTER);
 
-        // bottom buttons
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton btnShowUsers = new JButton("Show Usernames", loadIcon("info.jpg", 22, 22));
-        JButton btnApprove = new JButton("Approve Request", loadIcon("success.jpg", 22,22));
-        JButton btnReject = new JButton("Reject Request", loadIcon("delete.jpg",22,22));
+        // Bottom buttons
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 5));
+        bottom.setOpaque(false);
+
+        JButton btnShowUsers = createToolbarButton("info.jpg", "Show Usernames", new Color(255, 215, 0), 40, 40);
+        btnShowUsers.addActionListener(a -> showUsernames());
+
+        JButton btnApprove = createToolbarButton("success.jpg", "Approve Request", new Color(60, 179, 113), 40, 40);
+        btnApprove.addActionListener(a -> approveSelectedRequest());
+
+        JButton btnReject = createToolbarButton("error.jpg", "Reject Request", new Color(244, 67, 54), 40, 40);
+        btnReject.addActionListener(a -> rejectSelectedRequest());
+
         bottom.add(btnShowUsers);
         bottom.add(btnApprove);
         bottom.add(btnReject);
-        getContentPane().add(bottom, BorderLayout.SOUTH);
 
-        // action wiring
-        btnAdd.addActionListener(a -> showAddDialog());
-        btnDelete.addActionListener(a -> deleteSelected());
-        btnRefresh.addActionListener(a -> refreshTable());
-        btnSave.addActionListener(a -> saveChanges());
+        mainPanel.add(bottom, BorderLayout.SOUTH);
 
-        btnShowUsers.addActionListener(a -> showUsernames());
-        btnApprove.addActionListener(a -> approveSelectedRequest());
-        btnReject.addActionListener(a -> rejectSelectedRequest());
-
-        // initial load
+        // Load initial data
         refreshTable();
         loadRequestData();
 
         setVisible(true);
     }
 
-    // local icon loader
+    // =================== Button Creation Helper ===================
+    private JButton createToolbarButton(String iconName, String tooltip, Color hoverColor, int w, int h) {
+        JButton btn = new JButton(loadIcon(iconName, w, h));
+        btn.setToolTipText(tooltip);
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setOpaque(false);
+                btn.setBorder(BorderFactory.createLineBorder(hoverColor, 4));
+            }
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setOpaque(false);
+                btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+            }
+        });
+
+        // Rounded corners
+        btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+            @Override
+            public void paint(Graphics g, JComponent c) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (btn.isOpaque()) {
+                    g2.setColor(btn.getBackground());
+                    g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), 20, 20);
+                }
+                super.paint(g2, c);
+                g2.dispose();
+            }
+        });
+
+        return btn;
+    }
+
     private ImageIcon loadIcon(String name, int w, int h) {
         try {
             java.net.URL url = getClass().getResource("/com/swing/bankingApplication/icons/" + name);
@@ -128,17 +197,52 @@ public class AdminDashboard extends JFrame {
         } catch (Exception e) { return null; }
     }
 
-    // dialog helpers using icons
+    private void styleTable(JTable table) {
+        table.setFillsViewportHeight(true);
+        table.setRowHeight(28);
+        table.setSelectionBackground(new Color(100,149,237));
+        table.setSelectionForeground(Color.WHITE);
+        table.setShowHorizontalLines(false);
+        table.setShowVerticalLines(false);
+        table.setGridColor(new Color(220,220,220));
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        table.getTableHeader().setBackground(new Color(200,200,200));
+        table.getTableHeader().setForeground(Color.DARK_GRAY);
+
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+                if (isSelected) {
+                    c.setBackground(new Color(100,149,237));
+                    c.setForeground(Color.WHITE);
+                } else {
+                    if (row % 2 == 0) {
+                        c.setBackground(new Color(240,248,255));
+                        c.setForeground(new Color(25,25,112));
+                    } else {
+                        c.setBackground(new Color(224,255,255));
+                        c.setForeground(new Color(0,100,0));
+                    }
+                }
+                setBorder(new EmptyBorder(0,5,0,5));
+                return c;
+            }
+        });
+    }
+
+    // =================== Dialog Helpers ===================
     private void showDialog(String message, String iconName, String title) {
         ImageIcon icon = loadIcon(iconName, 64, 64);
         JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE, icon);
     }
+
     private int showConfirm(String message, String iconName, String title) {
         ImageIcon icon = loadIcon(iconName, 64, 64);
         return JOptionPane.showConfirmDialog(this, message, title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, icon);
     }
 
-    // table operations
+    // =================== Functional Methods ===================
     public void refreshTable() {
         model.setRowCount(0);
         List<Account> all = accountService.getAllAccounts();
@@ -159,10 +263,7 @@ public class AdminDashboard extends JFrame {
 
     private void deleteSelected() {
         int r = table.getSelectedRow();
-        if (r < 0) {
-            showDialog("Select a row to delete", "info.jpg", "Info");
-            return;
-        }
+        if (r < 0) { showDialog("Select a row to delete", "info.jpg", "Info"); return; }
         String uname = model.getValueAt(r,0).toString();
         int conf = showConfirm("Delete account for '" + uname + "'?", "warning.jpg", "Confirm Delete");
         if (conf == JOptionPane.YES_OPTION) {
