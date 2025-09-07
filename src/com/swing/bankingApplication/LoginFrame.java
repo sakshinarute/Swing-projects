@@ -17,16 +17,15 @@ public class LoginFrame extends JFrame {
         setLocationRelativeTo(null);
         setUndecorated(false);
 
-        // Gradient panel with lighter colors
+        // Gradient panel
         JPanel mainPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
-                Color c1 = new Color(235, 255, 245); // very light mint
-                Color c2 = new Color(245, 240, 255); // very light lavender
-                GradientPaint gp = new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2);
-                g2.setPaint(gp);
+                Color c1 = new Color(235, 255, 245);
+                Color c2 = new Color(245, 240, 255);
+                g2.setPaint(new GradientPaint(0, 0, c1, getWidth(), getHeight(), c2));
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
         };
@@ -51,7 +50,7 @@ public class LoginFrame extends JFrame {
 
         mainPanel.add(center, BorderLayout.CENTER);
 
-        // South panel with icon buttons
+        // South panel with buttons
         JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 0));
         south.setOpaque(false);
 
@@ -69,32 +68,29 @@ public class LoginFrame extends JFrame {
         setVisible(true);
     }
 
-    // Create icon-only button with hover effect
     private JButton createIconButton(String iconName, int size, Color hoverColor, String tooltip) {
         JButton button = new JButton(loadIcon(iconName, size, size));
-        button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2)); // default black border
+        button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
         button.setContentAreaFilled(false);
         button.setFocusPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setToolTipText(tooltip);
 
-        // Hover effect: background + thicker border
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e) {
                 button.setOpaque(true);
                 button.setBackground(hoverColor);
-                button.setBorder(BorderFactory.createLineBorder(hoverColor, 5)); // thicker colored border on hover
+                button.setBorder(BorderFactory.createLineBorder(hoverColor, 5));
             }
 
             @Override
             public void mouseExited(java.awt.event.MouseEvent e) {
                 button.setOpaque(false);
-                button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2)); // revert to black border
+                button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
             }
         });
 
-        // Rounded background
         button.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
             @Override
             public void paint(Graphics g, JComponent c) {
@@ -111,7 +107,6 @@ public class LoginFrame extends JFrame {
 
         return button;
     }
-
 
     private ImageIcon loadIcon(String name, int w, int h) {
         try {
@@ -147,24 +142,37 @@ public class LoginFrame extends JFrame {
                         JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 42, 42));
             }
         } else {
-            Account acc = accountService.findByUsername(u);
-            if (acc != null && acc.getPassword().equals(p)) {
-                Session.loggedInUser = u;
-                Session.isAdmin = false;
-                dispose();
-                new UserDashboard();
-            } else {
-                JOptionPane.showMessageDialog(this, "Invalid user credentials", "Error",
-                        JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 42, 42));
-            }
+            // SwingWorker to avoid blocking UI
+            new SwingWorker<Account, Void>() {
+                @Override
+                protected Account doInBackground() {
+                    return accountService.findByUsername(u);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        Account acc = get();
+                        if (acc != null && acc.getPassword().equals(p)) {
+                            Session.loggedInUser = u;
+                            Session.isAdmin = false;
+                            dispose();
+                            new UserDashboard();
+                        } else {
+                            JOptionPane.showMessageDialog(LoginFrame.this, "Invalid user credentials", "Error",
+                                    JOptionPane.ERROR_MESSAGE, loadIcon("error.jpg", 42, 42));
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }.execute();
         }
     }
 
     private void doExit() {
         int choice = JOptionPane.showConfirmDialog(this, "Do you really want to exit?", "Exit",
                 JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, loadIcon("warning.jpg", 64, 64));
-        if (choice == JOptionPane.YES_OPTION) {
-            System.exit(0);
-        }
+        if (choice == JOptionPane.YES_OPTION) System.exit(0);
     }
 }

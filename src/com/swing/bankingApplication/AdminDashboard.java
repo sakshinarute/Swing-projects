@@ -25,11 +25,10 @@ public class AdminDashboard extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-     // Plain main panel
+        // Plain main panel
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         setContentPane(mainPanel);
-
 
         // Menu bar
         JMenuBar mb = new JMenuBar();
@@ -73,13 +72,12 @@ public class AdminDashboard extends JFrame {
         navTree = new JTree(root);
         navTree.setRootVisible(false);
         navTree.setBorder(new EmptyBorder(5,5,5,5));
-        navTree.setBackground(Color.WHITE); // or whatever plain color you prefer
+        navTree.setBackground(Color.WHITE);
         DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) navTree.getCellRenderer();
-        renderer.setBackgroundNonSelectionColor(Color.WHITE); // plain background
-        renderer.setBackgroundSelectionColor(new Color(173, 216, 230)); // light blue for selection
+        renderer.setBackgroundNonSelectionColor(Color.WHITE);
+        renderer.setBackgroundSelectionColor(new Color(173, 216, 230));
         renderer.setTextNonSelectionColor(Color.BLACK);
         renderer.setTextSelectionColor(Color.BLACK);
-
 
         navTree.addTreeSelectionListener(e -> {
             DefaultMutableTreeNode sel = (DefaultMutableTreeNode) navTree.getLastSelectedPathComponent();
@@ -169,7 +167,6 @@ public class AdminDashboard extends JFrame {
             }
         });
 
-        // Rounded corners
         btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
             @Override
             public void paint(Graphics g, JComponent c) {
@@ -243,22 +240,40 @@ public class AdminDashboard extends JFrame {
     }
 
     // =================== Functional Methods ===================
+ // Threaded refreshTable
     public void refreshTable() {
-        model.setRowCount(0);
-        List<Account> all = accountService.getAllAccounts();
-        for (Account a : all) {
-            model.addRow(new Object[]{a.getUsername(), a.getOwnerName(), a.getGender(), a.getAccountType(), a.getBalance(), a.isSmsAlerts()});
-        }
+        new SwingWorker<List<Account>, Void>() {
+            @Override
+            protected List<Account> doInBackground() {
+                return accountService.getAllAccounts(); // fetch in background
+            }
+
+            @Override
+            protected void done() {
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        List<Account> all = get();
+                        model.setRowCount(0);
+                        for (Account a : all) {
+                            model.addRow(new Object[]{a.getUsername(), a.getOwnerName(), a.getGender(),
+                                    a.getAccountType(), a.getBalance(), a.isSmsAlerts()});
+                        }
+                    } catch (Exception e) { e.printStackTrace(); }
+                });
+            }
+        }.execute();
     }
 
     private void filterByType(String type) {
-        model.setRowCount(0);
-        List<Account> all = accountService.getAllAccounts();
-        for (Account a : all) {
-            if (a.getAccountType().equalsIgnoreCase(type)) {
-                model.addRow(new Object[]{a.getUsername(), a.getOwnerName(), a.getGender(), a.getAccountType(), a.getBalance(), a.isSmsAlerts()});
+        SwingUtilities.invokeLater(() -> {
+            model.setRowCount(0);
+            List<Account> all = accountService.getAllAccounts();
+            for (Account a : all) {
+                if (a.getAccountType().equalsIgnoreCase(type)) {
+                    model.addRow(new Object[]{a.getUsername(), a.getOwnerName(), a.getGender(), a.getAccountType(), a.getBalance(), a.isSmsAlerts()});
+                }
             }
-        }
+        });
     }
 
     private void deleteSelected() {
@@ -370,37 +385,83 @@ public class AdminDashboard extends JFrame {
         }
     }
 
+    // Threaded loadRequestData
     private void loadRequestData() {
-        requestModel.setRowCount(0);
-        for (TransactionRequest r : accountService.getRequests()) {
-            requestModel.addRow(new Object[]{r.getUsername(), r.getType(), r.getAmount()});
-        }
-    }
+        new SwingWorker<List<TransactionRequest>, Void>() {
+            @Override
+            protected List<TransactionRequest> doInBackground() {
+                return accountService.getRequests(); // fetch requests in background
+            }
 
+            @Override
+            protected void done() {
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        List<TransactionRequest> requests = get();
+                        requestModel.setRowCount(0);
+                        for (TransactionRequest r : requests) {
+                            requestModel.addRow(new Object[]{r.getUsername(), r.getType(), r.getAmount()});
+                        }
+                    } catch (Exception e) { e.printStackTrace(); }
+                });
+            }
+        }.execute();
+    }
+    // =================== Threaded Approve/Reject ===================
     private void approveSelectedRequest() {
         int r = requestTable.getSelectedRow();
         if (r < 0) { showDialog("Select a request to approve", "info.jpg", "Info"); return; }
         TransactionRequest req = accountService.getRequests().get(r);
-        boolean ok = false;
-        if ("Deposit".equalsIgnoreCase(req.getType())) ok = accountService.deposit(req.getUsername(), req.getAmount());
-        else if ("Withdraw".equalsIgnoreCase(req.getType())) ok = accountService.withdraw(req.getUsername(), req.getAmount());
 
-        if (ok) {
-            accountService.removeRequest(req);
-            loadRequestData();
-            refreshTable();
-            showDialog("Request approved and processed", "success.jpg", "Success");
-        } else {
-            showDialog("Request failed (insufficient balance or invalid)", "error.jpg", "Error");
-        }
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                boolean ok = false;
+                if ("Deposit".equalsIgnoreCase(req.getType())) ok = accountService.deposit(req.getUsername(), req.getAmount());
+                else if ("Withdraw".equalsIgnoreCase(req.getType())) ok = accountService.withdraw(req.getUsername(), req.getAmount());
+                return ok;
+            }
+
+            @Override
+            protected void done() {
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        boolean ok = get();
+                        if (ok) {
+                            accountService.removeRequest(req);
+                            loadRequestData();
+                            refreshTable();
+                            showDialog("Request approved and processed", "success.jpg", "Success");
+                        } else {
+                            showDialog("Request failed (insufficient balance or invalid)", "error.jpg", "Error");
+                        }
+                    } catch (Exception ex) {
+                        showDialog("Error processing request", "error.jpg", "Error");
+                    }
+                });
+            }
+        }.execute();
     }
 
     private void rejectSelectedRequest() {
         int r = requestTable.getSelectedRow();
         if (r < 0) { showDialog("Select a request to reject", "info.jpg", "Info"); return; }
         TransactionRequest req = accountService.getRequests().get(r);
-        accountService.removeRequest(req);
-        loadRequestData();
-        showDialog("Request rejected", "info.jpg", "Info");
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                accountService.removeRequest(req);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                SwingUtilities.invokeLater(() -> {
+                    loadRequestData();
+                    showDialog("Request rejected", "info.jpg", "Info");
+                });
+            }
+        }.execute();
     }
 }
