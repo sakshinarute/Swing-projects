@@ -7,7 +7,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import java.awt.*;
+import java.io.*;
 import java.util.List;
+import java.util.*;
 
 public class AdminDashboard extends JFrame {
 
@@ -25,7 +27,6 @@ public class AdminDashboard extends JFrame {
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Plain main panel
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         setContentPane(mainPanel);
@@ -132,9 +133,17 @@ public class AdminDashboard extends JFrame {
         JButton btnReject = createToolbarButton("error.jpg", "Reject Request", new Color(244, 67, 54), 40, 40);
         btnReject.addActionListener(a -> rejectSelectedRequest());
 
+        JButton btnImport = createToolbarButton("import.jpg", "Import Accounts", new Color(70, 130, 180), 40, 40);
+        btnImport.addActionListener(a -> importAccounts());
+
+        JButton btnExport = createToolbarButton("export.jpg", "Export Accounts", new Color(70, 130, 180), 40, 40);
+        btnExport.addActionListener(a -> exportAccounts());
+
         bottom.add(btnShowUsers);
         bottom.add(btnApprove);
         bottom.add(btnReject);
+        bottom.add(btnImport);
+        bottom.add(btnExport);
 
         mainPanel.add(bottom, BorderLayout.SOUTH);
 
@@ -145,7 +154,7 @@ public class AdminDashboard extends JFrame {
         setVisible(true);
     }
 
-    // =================== Button Creation Helper ===================
+    // =================== Button & Table Helpers ===================
     private JButton createToolbarButton(String iconName, String tooltip, Color hoverColor, int w, int h) {
         JButton btn = new JButton(loadIcon(iconName, w, h));
         btn.setToolTipText(tooltip);
@@ -228,7 +237,6 @@ public class AdminDashboard extends JFrame {
         });
     }
 
-    // =================== Dialog Helpers ===================
     private void showDialog(String message, String iconName, String title) {
         ImageIcon icon = loadIcon(iconName, 64, 64);
         JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE, icon);
@@ -240,14 +248,12 @@ public class AdminDashboard extends JFrame {
     }
 
     // =================== Functional Methods ===================
- // Threaded refreshTable
     public void refreshTable() {
         new SwingWorker<List<Account>, Void>() {
             @Override
             protected List<Account> doInBackground() {
-                return accountService.getAllAccounts(); // fetch in background
+                return accountService.getAllAccounts();
             }
-
             @Override
             protected void done() {
                 SwingUtilities.invokeLater(() -> {
@@ -385,12 +391,11 @@ public class AdminDashboard extends JFrame {
         }
     }
 
-    // Threaded loadRequestData
     private void loadRequestData() {
         new SwingWorker<List<TransactionRequest>, Void>() {
             @Override
             protected List<TransactionRequest> doInBackground() {
-                return accountService.getRequests(); // fetch requests in background
+                return accountService.getRequests();
             }
 
             @Override
@@ -407,7 +412,7 @@ public class AdminDashboard extends JFrame {
             }
         }.execute();
     }
-    // =================== Threaded Approve/Reject ===================
+
     private void approveSelectedRequest() {
         int r = requestTable.getSelectedRow();
         if (r < 0) { showDialog("Select a request to approve", "info.jpg", "Info"); return; }
@@ -463,5 +468,65 @@ public class AdminDashboard extends JFrame {
                 });
             }
         }.execute();
+    }
+
+    // =================== Import & Export Methods ===================
+    private void importAccounts() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Select Accounts CSV File");
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase().endsWith(".csv")) {
+                showDialog("Invalid file type! Please select a CSV file.", "error.jpg", "Error");
+                return;
+            }
+            List<Account> importedAccounts = new ArrayList<>();
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line = br.readLine(); // skip header
+                while ((line = br.readLine()) != null) {
+                    String[] p = line.split(",");
+                    if (p.length >= 7) {
+                        importedAccounts.add(new Account(p[0], p[1], p[2], p[3], p[4],
+                                Double.parseDouble(p[5]), Boolean.parseBoolean(p[6])));
+                    }
+                }
+            } catch (Exception ex) {
+                showDialog("Error reading file: " + ex.getMessage(), "error.jpg", "Error");
+                return;
+            }
+
+            List<Account> existing = accountService.getAllAccounts();
+            int added = 0;
+            for (Account acc : importedAccounts) {
+                boolean exists = existing.stream().anyMatch(a -> a.getUsername().equals(acc.getUsername()));
+                if (!exists) {
+                    accountService.addAccount(acc);
+                    added++;
+                }
+            }
+            refreshTable();
+            showDialog("Import complete! " + added + " new accounts added.", "success.jpg", "Success");
+        }
+    }
+
+    private void exportAccounts() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Export Accounts");
+        chooser.setSelectedFile(new File("accounts_export.csv"));
+        int result = chooser.showSaveDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(file))) {
+                bw.write("username,password,ownerName,gender,accountType,balance,smsAlerts\n");
+                for (Account a : accountService.getAllAccounts()) {
+                    bw.write(a.getUsername() + "," + a.getPassword() + "," + a.getOwnerName() + "," +
+                            a.getGender() + "," + a.getAccountType() + "," + a.getBalance() + "," + a.isSmsAlerts() + "\n");
+                }
+                showDialog("Export successful! Saved to: " + file.getAbsolutePath(), "success.jpg", "Success");
+            } catch (Exception ex) {
+                showDialog("Error exporting: " + ex.getMessage(), "error.jpg", "Error");
+            }
+        }
     }
 }
